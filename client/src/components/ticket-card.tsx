@@ -78,10 +78,10 @@ export function TicketCard({ ticket, onClick, isDragging }: TicketCardProps) {
             <Clock className="h-3 w-3" />
             <span>{formatDistanceToNow(new Date(ticket.createdAt), { addSuffix: true })}</span>
           </div>
-          {ticket.attachments && ticket.attachments.length > 0 && (
+          {ticket.attachmentUrls && ticket.attachmentUrls.length > 0 && (
             <div className="flex items-center gap-1">
               <Paperclip className="h-3 w-3" />
-              <span>{ticket.attachments.length}</span>
+              <span>{ticket.attachmentUrls.length}</span>
             </div>
           )}
         </div>

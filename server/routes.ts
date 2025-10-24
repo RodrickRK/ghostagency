@@ -3,27 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertTicketSchema, insertUserSchema, insertCommentSchema } from "@shared/schema";
 import { ZodError } from "zod";
-import multer from "multer";
-import path from "path";
-import fs from "fs";
 import bcrypt from "bcrypt";
-
-// Configure multer for file uploads
-const uploadDir = path.join(process.cwd(), "uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const upload = multer({
-  storage: multer.diskStorage({
-    destination: uploadDir,
-    filename: (req, file, cb) => {
-      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-      cb(null, uniqueSuffix + path.extname(file.originalname));
-    },
-  }),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
-});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Authentication middleware
@@ -109,26 +89,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // File upload endpoint
-  app.post("/api/upload", requireAuth, upload.array("files", 10), async (req: any, res) => {
-    try {
-      if (!req.files || req.files.length === 0) {
-        return res.status(400).json({ error: "No files uploaded" });
-      }
-
-      const fileUrls = req.files.map((file: any) => `/uploads/${file.filename}`);
-      res.json({ files: fileUrls });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to upload files" });
-    }
-  });
-
   app.post("/api/tickets", requireAuth, async (req: any, res) => {
     try {
       const validatedData = insertTicketSchema.parse({
         ...req.body,
         clientId: req.userId,
         status: "requested",
+        attachmentUrls: req.body.attachmentUrls || [] // Handle optional attachment URLs
       });
 
       const ticket = await storage.createTicket(validatedData);
@@ -211,6 +178,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Attachment URL validation endpoint
+  app.post("/api/attachments/validate", requireAuth, async (req, res) => {
+    try {
+      const { url } = req.body;
+      
+      if (!url) {
+        return res.status(400).json({ error: "URL is required" });
+      }
+
+      // Basic URL validation
+      try {
+        new URL(url);
+      } catch (e) {
+        return res.status(400).json({ error: "Invalid URL format" });
+      }
+
+      // Here we could add additional validation:
+      // - Check file size
+      // - Validate file type
+      // - Scan for malware
+      // - etc.
+
+      return res.json({
+        success: true,
+        url: url,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error validating attachment URL:', error);
+      res.status(500).json({ error: "Failed to validate attachment URL" });
+    }
+  });
+
   app.patch("/api/admin/tickets/:id", requireAdminAuth, async (req, res) => {
     try {
       const { id } = req.params;
@@ -251,29 +251,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Serve uploaded files with security checks
-  app.get("/uploads/:filename", (req, res) => {
-    try {
-      const requestedFile = path.basename(req.params.filename); // Remove any directory traversal attempts
-      const filePath = path.resolve(uploadDir, requestedFile);
-      
-      // Ensure the resolved path is within the uploads directory
-      if (!filePath.startsWith(path.resolve(uploadDir))) {
-        return res.status(403).json({ error: "Access denied" });
-      }
-      
-      // Check if file exists
-      if (!fs.existsSync(filePath)) {
-        return res.status(404).json({ error: "File not found" });
-      }
-      
-      // Serve the file
-      res.setHeader("Access-Control-Allow-Origin", "*");
-      res.sendFile(filePath);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to serve file" });
-    }
-  });
+
 
   const httpServer = createServer(app);
   return httpServer;

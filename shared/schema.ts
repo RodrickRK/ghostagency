@@ -45,7 +45,7 @@ export const tickets = pgTable("tickets", {
   description: text("description").notNull(),
   status: ticketStatusEnum("status").notNull().default("requested"),
   priority: ticketPriorityEnum("priority").notNull().default("medium"),
-  attachments: text("attachments").array(),
+  attachmentUrls: text("attachment_urls").array(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -115,11 +115,15 @@ export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
   updatedAt: true,
 });
 
-export const insertTicketSchema = createInsertSchema(tickets).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertTicketSchema = createInsertSchema(tickets)
+  .omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+  })
+  .extend({
+    attachmentUrls: z.array(z.string().url()).optional(),
+  });
 
 export const insertCommentSchema = createInsertSchema(comments).omit({
   id: true,

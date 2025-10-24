@@ -1,12 +1,26 @@
 [build]
-  command = "npm run build"
-  functions = "netlify/functions"
-  publish = "dist"
+  command = "npx drizzle-kit push:pg && npm run build"
+  functions = "dist/netlify/functions"
+  publish = "dist/public"
 
 [functions]
   directory = "netlify/functions"
+  included_files = ["shared/**"]
   external_node_modules = ["express"]
   node_bundler = "esbuild"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[dev]
+  command = "npm run dev:all"
+  framework = "#custom"
+  targetPort = 5173
+  port = 8888
+  publish = "dist/public"
+
+[build.processing]
+  skip_processing = true
 
 [[redirects]]
   from = "/api/*"

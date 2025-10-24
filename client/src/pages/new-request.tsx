@@ -19,43 +19,13 @@ export default function NewRequest() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
-  const [files, setFiles] = useState<File[]>([]);
-  const [uploading, setUploading] = useState(false);
-
+  const [attachmentUrls, setAttachmentUrls] = useState<string[]>([]);
+  
   const createMutation = useMutation({
     mutationFn: async (data: Partial<InsertTicket>) => {
-      // First upload files if any
-      let attachments: string[] = [];
-      if (files.length > 0) {
-        setUploading(true);
-        const formData = new FormData();
-        files.forEach((file) => {
-          formData.append("files", file);
-        });
-
-        try {
-          const uploadResponse = await fetch("/api/upload", {
-            method: "POST",
-            body: formData,
-          });
-
-          if (!uploadResponse.ok) {
-            throw new Error("Upload failed");
-          }
-
-          const uploadData = await uploadResponse.json();
-          attachments = uploadData.files;
-        } catch (error) {
-          throw new Error("Failed to upload files");
-        } finally {
-          setUploading(false);
-        }
-      }
-
-      // Then create the ticket with attachment URLs
       return apiRequest("POST", "/api/tickets", {
         ...data,
-        attachments,
+        attachmentUrls,
       });
     },
     onSuccess: () => {
@@ -75,26 +45,43 @@ export default function NewRequest() {
     },
   });
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setFiles([...files, ...Array.from(e.target.files)]);
-    }
-  };
-
-  const removeFile = (index: number) => {
-    setFiles(files.filter((_, i) => i !== index));
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     createMutation.mutate({
       title,
       description,
       priority,
+      attachmentUrls,
     });
   };
 
-  const isSubmitting = createMutation.isPending || uploading;
+  const handleUrlAdd = () => {
+    const url = prompt("Enter URL for attachment:");
+    if (url && isValidUrl(url)) {
+      setAttachmentUrls([...attachmentUrls, url]);
+    } else if (url) {
+      toast({
+        title: "Invalid URL",
+        description: "Please enter a valid URL starting with http:// or https://",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const removeUrl = (index: number) => {
+    setAttachmentUrls(attachmentUrls.filter((_, i) => i !== index));
+  };
+
+  const isValidUrl = (urlString: string): boolean => {
+    try {
+      const url = new URL(urlString);
+      return url.protocol === 'http:' || url.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  };
+
+  const isSubmitting = createMutation.isPending;
 
   return (
     <div className="min-h-screen bg-background">
@@ -166,53 +153,50 @@ export default function NewRequest() {
 
               <div className="space-y-2">
                 <Label>Attachments</Label>
-                <div className="border-2 border-dashed rounded-md p-8 text-center hover-elevate cursor-pointer">
-                  <input
-                    type="file"
-                    multiple
-                    onChange={handleFileChange}
-                    className="hidden"
-                    id="file-upload"
-                    data-testid="input-files"
-                    accept="image/*,.pdf,.doc,.docx"
-                  />
-                  <label htmlFor="file-upload" className="cursor-pointer">
-                    <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-2" />
-                    <p className="text-sm text-muted-foreground">
-                      Click to upload reference files, mockups, or inspiration
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Images, PDFs, or documents (max 10MB each)
-                    </p>
-                  </label>
-                </div>
-
-                {files.length > 0 && (
-                  <div className="space-y-2 mt-4">
-                    {files.map((file, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between p-2 bg-muted rounded-md"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <span className="text-sm truncate block">{file.name}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {(file.size / 1024).toFixed(1)} KB
-                          </span>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeFile(index)}
-                          className="h-6 w-6 flex-shrink-0"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
+                <div className="border rounded-md p-4">
+                  <div className="flex items-center justify-center w-full">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full h-32"
+                      onClick={handleUrlAdd}
+                      data-testid="button-add-url"
+                    >
+                      <div className="flex flex-col items-center justify-center">
+                        <Upload className="w-8 h-8 mb-3 text-muted-foreground" />
+                        <p className="mb-2 text-sm text-muted-foreground">
+                          <span className="font-semibold">Click to add</span> an attachment URL
+                        </p>
+                        <p className="text-xs text-muted-foreground">URLs to images, PDFs, or documents</p>
                       </div>
-                    ))}
+                    </Button>
                   </div>
-                )}
+
+                  {attachmentUrls.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      {attachmentUrls.map((url, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between bg-muted/50 rounded-md p-2"
+                          data-testid={`attachment-${index}`}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm truncate block">{url}</span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeUrl(index)}
+                            className="h-6 w-6 flex-shrink-0"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="flex gap-2">
@@ -231,11 +215,7 @@ export default function NewRequest() {
                   className="flex-1"
                   data-testid="button-submit"
                 >
-                  {uploading
-                    ? "Uploading files..."
-                    : createMutation.isPending
-                    ? "Submitting..."
-                    : "Submit Request"}
+                  {isSubmitting ? "Submitting..." : "Submit Request"}
                 </Button>
               </div>
             </form>
