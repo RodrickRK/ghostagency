@@ -21,6 +21,11 @@ export default function Login() {
 
     try {
       const response = await apiRequest("POST", "/api/login", { email, password });
+      const data = await response.json();
+      
+      if (!data.user || !data.user.role) {
+        throw new Error("Invalid response from server - missing user role");
+      }
       
       toast({
         title: "Login successful",
@@ -28,10 +33,15 @@ export default function Login() {
       });
       
       // Redirect based on user role
-      if (response.user.role === "admin" || response.user.role === "employee") {
-        setLocation("/admin");
-      } else {
-        setLocation("/dashboard");
+      switch (data.user.role) {
+        case "admin":
+          setLocation("/admin");
+          break;
+        case "employee":
+          setLocation("/employee"); // Employees go to their dashboard
+          break;
+        default:
+          setLocation("/dashboard");
       }
     } catch (error: any) {
       toast({
@@ -98,6 +108,7 @@ export default function Login() {
           <div className="text-xs space-y-1 font-mono">
             <p>Client: client@example.com</p>
             <p>Admin: admin@ghostagency.com</p>
+            <p>Employee: employee@ghostagency.com</p>
             <p>Password: password123</p>
           </div>
         </div>

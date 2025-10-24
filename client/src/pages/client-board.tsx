@@ -30,6 +30,10 @@ export default function ClientBoard() {
   const { toast } = useToast();
   const [activeTicket, setActiveTicket] = useState<TicketWithRelations | null>(null);
 
+  const { data: user } = useQuery<{ role: string }>({
+    queryKey: ["/api/user"],
+  });
+
   const { data: tickets = [], isLoading } = useQuery<TicketWithRelations[]>({
     queryKey: ["/api/tickets"],
   });
@@ -123,7 +127,7 @@ export default function ClientBoard() {
           <p className="text-muted-foreground text-center py-12">Loading board...</p>
         ) : (
           <DndContext
-            sensors={sensors}
+            sensors={user?.role === "admin" || user?.role === "employee" ? sensors : []}
             collisionDetection={closestCorners}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
@@ -205,6 +209,14 @@ function DroppableColumn({
 }
 
 function DraggableTicket({ ticket }: { ticket: TicketWithRelations }) {
+  // Get user from the parent context
+  const { data: user } = useQuery<{ role: string }>({
+    queryKey: ["/api/user"],
+  });
+
+  const isStaff = user?.role === "admin" || user?.role === "employee";
+
+  // Only enable drag-and-drop for admin and employee users
   const {
     attributes,
     listeners,
@@ -212,15 +224,23 @@ function DraggableTicket({ ticket }: { ticket: TicketWithRelations }) {
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: ticket.id });
+  } = useSortable({ 
+    id: ticket.id,
+    disabled: !isStaff 
+  });
 
-  const style = {
+  const style = isStaff ? {
     transform: CSS.Transform.toString(transform),
     transition,
-  };
+  } : undefined;
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+    <div 
+      ref={setNodeRef} 
+      style={style} 
+      {...(isStaff ? { ...attributes, ...listeners } : {})}
+      className={!isStaff ? "cursor-default" : undefined}
+    >
       <TicketCard ticket={ticket} isDragging={isDragging} />
     </div>
   );

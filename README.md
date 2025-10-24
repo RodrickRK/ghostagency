@@ -22,7 +22,13 @@ cp .env.example .env
 
 4. Fill in your environment variables in `.env`
 
-5. Start the development server:
+5. Set up the database and seed initial users:
+```bash
+npm run db:push   # Apply schema changes
+npm run db:seed   # Create initial admin and employee users
+```
+
+6. Start the development server:
 ```bash
 npm run dev:all
 ```

@@ -48,13 +48,31 @@ export interface IStorage {
 export class DatabaseStorage implements IStorage {
   // Users
   async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user || undefined;
+    try {
+      console.log('Getting user by id:', id);
+      const result = await db.select().from(users).where(eq(users.id, id));
+      console.log('Database result:', result);
+      const [user] = result;
+      console.log('User found:', user ? { ...user, password: '[REDACTED]' } : undefined);
+      return user || undefined;
+    } catch (error) {
+      console.error('Error getting user by id:', error);
+      throw error;
+    }
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
-    return user || undefined;
+    try {
+      console.log('Getting user by email:', email);
+      const result = await db.select().from(users).where(eq(users.email, email));
+      console.log('Database result:', result);
+      const [user] = result;
+      console.log('User found:', user ? { ...user, password: '[REDACTED]' } : undefined);
+      return user || undefined;
+    } catch (error) {
+      console.error('Error getting user by email:', error);
+      throw error;
+    }
   }
 
   async getUserWithSubscription(id: string): Promise<UserWithSubscription | undefined> {
@@ -176,15 +194,44 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllTickets(): Promise<TicketWithRelations[]> {
-    const results = await db.query.tickets.findMany({
-      with: {
-        client: true,
-        assignee: true,
-      },
-      orderBy: [desc(tickets.createdAt)],
-    });
+    try {
+      console.log('Getting all tickets');
+      
+      const results = await db.query.tickets.findMany({
+        with: {
+          client: true,
+          assignee: true,
+        },
+        orderBy: [desc(tickets.createdAt)],
+      });
 
-    return results as TicketWithRelations[];
+      // Log detailed ticket information for debugging
+      results.forEach(ticket => {
+        console.log('Ticket details:', {
+          id: ticket.id,
+          title: ticket.title,
+          status: ticket.status,
+          clientId: ticket.clientId,
+          clientName: ticket.client?.name,
+          assigneeId: ticket.assigneeId,
+          assigneeName: ticket.assignee?.name
+        });
+      });
+
+      console.log('Found tickets:', results.length);
+      
+      // Map the results to ensure proper typing and data structure
+      const ticketsWithRelations = results.map(ticket => ({
+        ...ticket,
+        client: ticket.client,
+        assignee: ticket.assignee || null,
+      }));
+
+      return ticketsWithRelations;
+    } catch (error) {
+      console.error('Error getting all tickets:', error);
+      throw error;
+    }
   }
 
   async createTicket(insertTicket: InsertTicket): Promise<Ticket> {

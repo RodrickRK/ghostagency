@@ -44,8 +44,17 @@ export default function ClientDashboard() {
     },
   });
 
-  const handleLogout = () => {
-    setLocation("/login");
+  const handleLogout = async () => {
+    try {
+      await apiRequest("POST", "/api/logout", {});
+      setLocation("/login");
+    } catch (error) {
+      toast({
+        title: "Logout failed",
+        description: "Please try again",
+        variant: "destructive",
+      });
+    }
   };
 
   if (userLoading) {

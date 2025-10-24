@@ -1,5 +1,6 @@
 import { LayoutDashboard, Ticket, Users, Settings } from "lucide-react";
 import { Link, useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import {
   Sidebar,
   SidebarContent,
@@ -29,8 +30,26 @@ const adminMenuItems = [
   },
 ];
 
+const employeeMenuItems = [
+  {
+    title: "Dashboard",
+    url: "/employee",
+    icon: LayoutDashboard,
+  },
+  {
+    title: "My Tickets",
+    url: "/employee/tickets",
+    icon: Ticket,
+  },
+];
+
 export function AppSidebar() {
   const [location] = useLocation();
+  const { data: user } = useQuery<{ role: string }>({
+    queryKey: ["/api/user"],
+  });
+
+  const menuItems = user?.role === "admin" ? adminMenuItems : employeeMenuItems;
 
   return (
     <Sidebar>
@@ -41,7 +60,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent className="mt-4">
             <SidebarMenu>
-              {adminMenuItems.map((item) => (
+              {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild

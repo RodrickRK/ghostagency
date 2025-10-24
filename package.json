@@ -9,12 +9,13 @@
     "dev:all": "npm-run-all --parallel dev dev:functions",
     "build": "npm run build:client && npm run build:functions",
     "build:client": "vite build",
-    "build:functions": "esbuild netlify/functions/api.ts --platform=node --target=node20 --format=esm --packages=external --bundle --outfile=dist/netlify/functions/api.js",
+    "build:functions": "esbuild netlify/functions/*.ts --platform=node --target=node20 --format=esm --packages=external --bundle --outdir=dist/netlify/functions",
     "check": "tsc",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "netlify dev:exec drizzle-kit migrate",
-    "db:studio": "netlify dev:exec drizzle-kit studio"
+    "db:studio": "netlify dev:exec drizzle-kit studio",
+    "db:seed": "tsx scripts/seed.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
